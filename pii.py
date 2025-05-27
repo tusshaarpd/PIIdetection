@@ -64,10 +64,10 @@ class PIIDetector:
         self.patterns = {
             'email': re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
             'phone': re.compile(r'(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}'),
-            'ssn': re.compile(r'\b\d{3}-?\d{2}-?\d{4}\b'),
+            'aadhaar': re.compile(r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b'),
             'credit_card': re.compile(r'\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b'),
             'date_of_birth': re.compile(r'\b(?:0[1-9]|1[0-2])[/\-.](?:0[1-9]|[12]\d|3[01])[/\-.](?:19|20)\d{2}\b'),
-            'zip_code': re.compile(r'\b\d{5}(?:-\d{4})?\b'),
+            'pin_code': re.compile(r'\b\d{6}\b'),
             'ip_address': re.compile(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'),
             'driver_license': re.compile(r'\b[A-Z]{1,2}\d{6,8}\b'),
             'passport': re.compile(r'\b[A-Z]{2}\d{7}\b'),
@@ -97,13 +97,13 @@ class PIIDetector:
                     text=match.group(), start=match.start(), end=match.end(),
                     pii_type='phone', confidence=0.9, page_num=0
                 ))
-        elif pii_type == 'ssn':
-            for match in self.patterns['ssn'].finditer(text):
-                ssn = re.sub(r'[^\d]', '', match.group())
-                if len(ssn) == 9 and ssn != '000000000':
+        elif pii_type == 'aadhaar':
+            for match in self.patterns['aadhaar'].finditer(text):
+                aadhaar = re.sub(r'[^\d]', '', match.group())
+                if len(aadhaar) == 12 and aadhaar != '000000000000':
                     matches.append(PIIMatch(
                         text=match.group(), start=match.start(), end=match.end(),
-                        pii_type='ssn', confidence=0.98, page_num=0
+                        pii_type='aadhaar', confidence=0.98, page_num=0
                     ))
         elif pii_type == 'credit_card':
             for match in self.patterns['credit_card'].finditer(text):
@@ -143,8 +143,8 @@ class PIIDetector:
         
         # Default to all types if none selected
         if not selected_types:
-            selected_types = ['email', 'phone', 'ssn', 'credit_card', 'date_of_birth', 
-                            'address', 'name', 'zip_code', 'ip_address', 'driver_license',
+            selected_types = ['email', 'phone', 'aadhaar', 'credit_card', 'date_of_birth', 
+                            'address', 'name', 'pin_code', 'ip_address', 'driver_license',
                             'passport', 'bank_account', 'medical_record', 'patient_id']
         
         # Detect selected types of PII
