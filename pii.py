@@ -39,25 +39,24 @@ class PIIMatch:
     page_num: int
     rect: Tuple[float, float, float, float] = None
 
+@st.cache_resource
+def load_spacy_model():
+    """Load spaCy NLP model for named entity recognition"""
+    try:
+        nlp = spacy.load("en_core_web_sm")
+        return nlp
+    except OSError:
+        st.warning("⚠️ spaCy model 'en_core_web_sm' not found. Name detection will be limited.")
+        st.info("To enable full name detection, install with: `python -m spacy download en_core_web_sm`")
+        return None
+
 class PIIDetector:
     """Main class for detecting various types of PII in text"""
     
     def __init__(self):
         """Initialize the PII detector with patterns and NLP model"""
-        self.nlp = None
-        self._load_nlp_model()
+        self.nlp = load_spacy_model()
         self._compile_patterns()
-        
-    @st.cache_resource
-    def _load_nlp_model(_self):
-        """Load spaCy NLP model for named entity recognition"""
-        try:
-            nlp = spacy.load("en_core_web_sm")
-            return nlp
-        except OSError:
-            st.warning("⚠️ spaCy model 'en_core_web_sm' not found. Name detection will be limited.")
-            st.info("To enable full name detection, install with: `python -m spacy download en_core_web_sm`")
-            return None
     
     def _compile_patterns(self):
         """Compile regex patterns for different types of PII"""
@@ -351,12 +350,12 @@ def main():
     pii_types = {
         'email': 'Email Addresses',
         'phone': 'Phone Numbers', 
-        'ssn': 'Social Security Numbers',
+        'aadhaar': 'Aadhaar Numbers',
         'credit_card': 'Credit Card Numbers',
         'name': 'Person Names',
         'address': 'Street Addresses',
         'date_of_birth': 'Dates of Birth',
-        'zip_code': 'ZIP Codes',
+        'pin_code': 'PIN Codes',
         'ip_address': 'IP Addresses',
         'driver_license': 'Driver License Numbers',
         'passport': 'Passport Numbers',
