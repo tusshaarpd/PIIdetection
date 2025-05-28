@@ -1,7 +1,17 @@
+# Streamlit PII Detection Tool Requirements
+
+# Core framework
 streamlit>=1.28.0
+# PDF processing
 PyMuPDF>=1.23.0
+# Natural Language Processing
 spacy>=3.6.0
+# Data manipulation and analysis
 pandas>=2.0.0
-plotly>=5.15.0
 numpy>=1.24.0
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
+# Visualization
+plotly>=5.15.0
+# Additional utilities (if needed)
+python-dateutil>=2.8.0
+# Optional: For better regex performance
+regex>=2023.6.0
