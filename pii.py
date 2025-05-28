@@ -45,9 +45,8 @@ def load_spacy_model():
     try:
         nlp = spacy.load("en_core_web_sm")
         return nlp
-    except OSError:
-        st.warning("⚠️ spaCy model 'en_core_web_sm' not found. Name detection will be limited.")
-        st.info("To enable full name detection, install with: `python -m spacy download en_core_web_sm`")
+    except (OSError, IOError):
+        # Model not found - this is handled gracefully
         return None
 
 class PIIDetector:
@@ -117,14 +116,36 @@ class PIIDetector:
                     text=match.group(), start=match.start(), end=match.end(),
                     pii_type='address', confidence=0.7, page_num=0
                 ))
-        elif pii_type == 'name' and self.nlp:
-            doc = self.nlp(text)
-            for ent in doc.ents:
-                if ent.label_ == "PERSON":
-                    matches.append(PIIMatch(
-                        text=ent.text, start=ent.start_char, end=ent.end_char,
-                        pii_type='name', confidence=0.85, page_num=0
-                    ))
+        elif pii_type == 'name':
+            if self.nlp:
+                # Use spaCy for advanced name detection
+                doc = self.nlp(text)
+                for ent in doc.ents:
+                    if ent.label_ == "PERSON":
+                        matches.append(PIIMatch(
+                            text=ent.text, start=ent.start_char, end=ent.end_char,
+                            pii_type='name', confidence=0.85, page_num=0
+                        ))
+            else:
+                # Fallback: Use basic pattern matching for common name patterns
+                name_patterns = [
+                    # Mr./Mrs./Ms./Dr. followed by names
+                    re.compile(r'\b(?:Mr|Mrs|Ms|Dr|Miss)\.?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b'),
+                    # First Name Last Name pattern (2 capitalized words)
+                    re.compile(r'\b[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\b'),
+                    # Three part names (First Middle Last)
+                    re.compile(r'\b[A-Z][a-z]{1,}\s+[A-Z][a-z]{1,}\s+[A-Z][a-z]{2,}\b')
+                ]
+                
+                for pattern in name_patterns:
+                    for match in pattern.finditer(text):
+                        # Filter out common false positives
+                        name_text = match.group()
+                        if not self._is_likely_false_positive(name_text):
+                            matches.append(PIIMatch(
+                                text=name_text, start=match.start(), end=match.end(),
+                                pii_type='name', confidence=0.6, page_num=0
+                            ))
         else:
             # Handle other PII types
             if pii_type in self.patterns:
@@ -192,6 +213,30 @@ class PIIDetector:
                 digits[i] -= 9
         
         return sum(digits) % 10 == 0
+    
+    def _is_likely_false_positive(self, name_text: str) -> bool:
+        """Check if detected name is likely a false positive"""
+        false_positives = {
+            # Common words that might be detected as names
+            'New York', 'Los Angeles', 'San Francisco', 'United States',
+            'Chief Executive', 'Vice President', 'Chief Officer', 'General Manager',
+            'Dear Sir', 'Dear Madam', 'Thank You', 'Best Regards',
+            'Monday Tuesday', 'January February', 'Credit Card', 'Social Security',
+            # Add more as needed
+        }
+        
+        # Check against known false positives
+        if name_text in false_positives:
+            return True
+            
+        # Check if it's all common words
+        words = name_text.split()
+        common_words = {'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among', 'under', 'over', 'along', 'within', 'without', 'upon', 'beneath', 'beside', 'beyond', 'across', 'behind', 'around', 'toward', 'throughout', 'underneath', 'alongside'}
+        
+        if len(words) >= 2 and all(word.lower() in common_words for word in words):
+            return True
+            
+        return False
 
 class StreamlitPDFRedactor:
     """Streamlit-specific PDF redactor class"""
@@ -338,9 +383,18 @@ def create_visualizations(results: Dict):
 def main():
     """Main Streamlit application"""
     
+    # Check spaCy model availability and show info
+    nlp_model = load_spacy_model()
+    
     # Header
     st.title("🔒 PII Detection & Redaction Tool")
     st.markdown("Upload a PDF document to automatically detect and redact Personally Identifiable Information (PII)")
+    
+    # Show spaCy status
+    if nlp_model is None:
+        st.info("ℹ️ **spaCy model not found** - Using basic pattern matching for name detection. For better accuracy, install with: `python -m spacy download en_core_web_sm`")
+    else:
+        st.success("✅ **spaCy model loaded** - Enhanced name detection available")
     
     # Sidebar configuration
     st.sidebar.header("⚙️ Configuration")
